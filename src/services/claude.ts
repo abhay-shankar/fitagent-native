@@ -1,5 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { OnboardData } from '../screens/OnboardScreen';
+import { AI_PROVIDER } from '../config';
+import * as Ollama from './ollama';
 
 const GOAL_LABELS     = ['Build muscle', 'Lose weight', 'Improve endurance', 'General fitness'];
 const EQUIP_LABELS    = ['Full gym access', 'Dumbbells / barbell', 'Resistance bands', 'Bodyweight only'];
@@ -63,7 +65,7 @@ const FALLBACK_EXERCISES: Exercise[] = [
   { name: 'Mountain Climber', sets: 3, reps: '20',    weight: 'Bodyweight' },
 ];
 
-export async function generateWorkoutPlan(profile: OnboardData): Promise<WorkoutPlan> {
+async function claudeGenerateWorkoutPlan(profile: OnboardData): Promise<WorkoutPlan> {
   console.log('[generateWorkoutPlan] sessionLength:', profile.sessionLength, '→', DURATION_LABELS[profile.sessionLength]);
 
   const response = await client.messages.create({
@@ -181,7 +183,7 @@ CRITICAL RULES — follow exactly:
   }
 }
 
-export async function generateDashboardNote(profile: OnboardData, plan: WorkoutPlan): Promise<string> {
+async function claudeGenerateDashboardNote(profile: OnboardData, plan: WorkoutPlan): Promise<string> {
   const today        = plan.weekSchedule.find(d => d.status === 'today');
   const completedDays = plan.weekSchedule.filter(d => d.status === 'done').length;
   const trainingDays  = plan.weekSchedule.filter(d => d.status !== 'rest').length;
@@ -204,7 +206,20 @@ export async function generateDashboardNote(profile: OnboardData, plan: WorkoutP
   return block.type === 'text' ? block.text : '';
 }
 
-export async function generateHistoryInsight(profile: OnboardData): Promise<string> {
+async function claudeGenerateHistoryInsight(
+  profile: OnboardData,
+  stats: { total: number; streak: number; adherence: string },
+  recentWorkouts: { workoutName: string; difficulty: number | null }[],
+): Promise<string> {
+  const DIFFICULTY_LABELS = ['Too Easy', 'Just Right', 'Too Hard'];
+
+  const recentSummary = recentWorkouts.length === 0
+    ? 'No workouts logged yet.'
+    : recentWorkouts
+        .slice(0, 5)
+        .map(w => `${w.workoutName} — ${w.difficulty !== null ? DIFFICULTY_LABELS[w.difficulty] : 'unrated'}`)
+        .join('\n');
+
   const response = await client.messages.create({
     model: 'claude-opus-4-6',
     max_tokens: 150,
@@ -212,8 +227,8 @@ export async function generateHistoryInsight(profile: OnboardData): Promise<stri
     messages: [{
       role: 'user',
       content: `User profile:\n${buildProfileSummary(profile)}\n\n` +
-        `Progress stats: 11 total workouts, 6-day streak, 78% adherence.\n` +
-        `Bench press progression over 7 weeks: 50 → 55 → 55 → 60 → 60 → 60 → 65 kg (+30%).\n\n` +
+        `Progress stats: ${stats.total} total workouts, ${stats.streak}-day streak, ${stats.adherence} adherence.\n` +
+        `Recent sessions:\n${recentSummary}\n\n` +
         `Write a short insight about their progress and one specific suggestion to keep improving.`,
     }],
   });
@@ -240,7 +255,7 @@ export interface AgentReview {
 const DIFFICULTY_LABELS = ['Too Easy', 'Just Right', 'Too Hard'];
 const FEEL_LABELS = ['Struggled', 'Good', 'Strong'];
 
-export async function generateAgentReview(
+async function claudeGenerateAgentReview(
   profile: OnboardData,
   checkin: CheckinData,
 ): Promise<AgentReview> {
@@ -298,3 +313,24 @@ export async function generateAgentReview(
     };
   }
 }
+
+// ─── Provider routing ─────────────────────────────────────────────────────────
+// Switch between Claude and Ollama by setting EXPO_PUBLIC_AI_PROVIDER in .env
+
+export const generateWorkoutPlan  = (profile: OnboardData) =>
+  AI_PROVIDER === 'ollama' ? Ollama.generateWorkoutPlan(profile)  : claudeGenerateWorkoutPlan(profile);
+
+export const generateDashboardNote = (profile: OnboardData, plan: WorkoutPlan) =>
+  AI_PROVIDER === 'ollama' ? Ollama.generateDashboardNote(profile, plan) : claudeGenerateDashboardNote(profile, plan);
+
+export const generateHistoryInsight = (
+  profile: OnboardData,
+  stats: { total: number; streak: number; adherence: string },
+  recentWorkouts: { workoutName: string; difficulty: number | null }[],
+) =>
+  AI_PROVIDER === 'ollama'
+    ? Promise.resolve('Keep logging your workouts — your agent will build insights as your history grows.')
+    : claudeGenerateHistoryInsight(profile, stats, recentWorkouts);
+
+export const generateAgentReview = (profile: OnboardData, checkin: CheckinData) =>
+  AI_PROVIDER === 'ollama' ? Ollama.generateAgentReview(profile, checkin) : claudeGenerateAgentReview(profile, checkin);

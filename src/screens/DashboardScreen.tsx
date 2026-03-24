@@ -6,6 +6,7 @@ import { Colors, FontFamily, Radius, Spacing } from '../tokens';
 import { Badge, AgentNote } from '../components/ui';
 import { OnboardData } from './OnboardScreen';
 import { WorkoutPlan, generateDashboardNote } from '../services/claude';
+import { getCachedDashboardNote, cacheDashboardNote } from '../services/storage';
 
 type WorkoutStatus = 'done' | 'today' | 'rest' | 'upcoming';
 
@@ -24,9 +25,15 @@ export default function DashboardScreen({ profile, plan, onStartWorkout, onViewH
   const [agentNote, setAgentNote] = useState('Analyzing your plan…');
 
   useEffect(() => {
-    generateDashboardNote(profile, plan)
-      .then(setAgentNote)
-      .catch(() => setAgentNote("You're on track — keep the momentum going."));
+    getCachedDashboardNote().then(cached => {
+      if (cached) {
+        setAgentNote(cached);
+      } else {
+        generateDashboardNote(profile, plan)
+          .then(note => { setAgentNote(note); cacheDashboardNote(note); })
+          .catch(() => setAgentNote("You're on track — keep the momentum going."));
+      }
+    });
   }, []);
 
   const today         = plan.weekSchedule.find(d => d.status === 'today');

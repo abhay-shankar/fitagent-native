@@ -11,6 +11,7 @@ import CheckinScreen                  from './src/screens/CheckinScreen';
 import AdaptScreen                    from './src/screens/AdaptScreen';
 import HistoryScreen                  from './src/screens/HistoryScreen';
 import { WorkoutPlan, CheckinData }   from './src/services/claude';
+import { saveWorkout }                from './src/services/storage';
 
 type Screen = 'onboard' | 'generating' | 'dashboard' | 'workout' | 'checkin' | 'adapt' | 'history';
 
@@ -56,15 +57,15 @@ export default function App() {
         <CheckinScreen
           workoutName={plan.weekSchedule.find(d => d.status === 'today')?.workoutName ?? 'Workout'}
           exercises={(plan.weekSchedule.find(d => d.status === 'today')?.exercises ?? []).map(e => e.name)}
-          onSubmit={data => { setCheckin(data); nav('adapt'); }}
+          onSubmit={data => { setCheckin(data); saveWorkout(data); nav('adapt'); }}
         />
       )}
       {screen === 'adapt' && profile && checkin && (
         <AdaptScreen profile={profile} checkin={checkin} onAccept={() => nav('dashboard')} />
       )}
 
-      {screen === 'history' && profile && (
-        <HistoryScreen profile={profile} onBack={() => nav('dashboard')} />
+      {screen === 'history' && (
+        <HistoryScreen onBack={() => nav('dashboard')} />
       )}
     </View>
   );

@@ -1,29 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, ScrollView, StyleSheet, SafeAreaView, Dimensions, TouchableOpacity,
+  View, Text, ScrollView, StyleSheet, SafeAreaView, TouchableOpacity,
 } from 'react-native';
 import { Colors, FontFamily, Radius, Spacing } from '../tokens';
-import { AgentNote } from '../components/ui';
-import { OnboardData } from './OnboardScreen';
-import { generateHistoryInsight } from '../services/claude';
+import { loadHistory, calcStats, WorkoutEntry } from '../services/storage';
 
-const STATS = [
-  { label: 'Workouts', value: '11', unit: 'total' },
-  { label: 'Streak',   value: '6',  unit: 'days' },
-  { label: 'Adherence',value: '78%',unit: 'avg' },
-];
+const DIFFICULTY_LABELS = ['Too Easy', 'Just Right', 'Too Hard'];
+const DIFFICULTY_COLORS = [Colors.lime, Colors.blue, Colors.orange];
 
-const BENCH_DATA = [50, 55, 55, 60, 60, 60, 65];
-const MAX_KG = Math.max(...BENCH_DATA) + 10;
-const BAR_HEIGHT = 80;
+function formatDate(iso: string): string {
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
 
-export default function HistoryScreen({ profile, onBack }: { profile: OnboardData; onBack: () => void }) {
-  const [insight, setInsight] = useState('Analyzing your progress…');
+export default function HistoryScreen({ onBack }: { onBack: () => void }) {
+  const [history, setHistory] = useState<WorkoutEntry[]>([]);
+  const [stats, setStats]     = useState({ total: 0, streak: 0, adherence: '—' });
 
   useEffect(() => {
-    generateHistoryInsight(profile)
-      .then(setInsight)
-      .catch(() => setInsight('Solid consistency — keep building on this foundation.'));
+    loadHistory().then(entries => {
+      setHistory(entries);
+      setStats(calcStats(entries));
+    });
   }, []);
 
   return (
@@ -36,43 +34,47 @@ export default function HistoryScreen({ profile, onBack }: { profile: OnboardDat
 
         {/* Stats row */}
         <View style={styles.statsRow}>
-          {STATS.map((s, i) => (
-            <View key={i} style={styles.statCard}>
-              <Text style={styles.statValue}>{s.value}</Text>
-              <Text style={styles.statLabel}>{s.label}</Text>
-            </View>
-          ))}
-        </View>
-
-        {/* Lift chart */}
-        <Text style={styles.sectionLabel}>BENCH PRESS PROGRESSION</Text>
-        <View style={styles.chartCard}>
-          <View style={styles.chartBars}>
-            {BENCH_DATA.map((kg, i) => {
-              const height = (kg / MAX_KG) * BAR_HEIGHT;
-              const isLast = i === BENCH_DATA.length - 1;
-              return (
-                <View key={i} style={styles.barWrapper}>
-                  <View style={{ height: BAR_HEIGHT, justifyContent: 'flex-end' }}>
-                    <View style={[
-                      styles.bar,
-                      { height, backgroundColor: isLast ? Colors.lime : Colors.lime + '44' },
-                    ]} />
-                  </View>
-                  <Text style={styles.barLabel}>W{i + 1}</Text>
-                </View>
-              );
-            })}
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{stats.total}</Text>
+            <Text style={styles.statLabel}>Workouts</Text>
           </View>
-          <Text style={styles.chartGain}>+30% over 7 weeks</Text>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{stats.streak}</Text>
+            <Text style={styles.statLabel}>Day streak</Text>
+          </View>
+          <View style={styles.statCard}>
+            <Text style={styles.statValue}>{stats.adherence}</Text>
+            <Text style={styles.statLabel}>Adherence</Text>
+          </View>
         </View>
 
-        {/* Agent insight */}
-        <AgentNote
-          label="AGENT INSIGHT"
-          accentColor={Colors.orange}
-          message={insight}
-        />
+        {/* Workout history */}
+        <Text style={[styles.sectionLabel, { marginTop: Spacing.lg }]}>WORKOUT HISTORY</Text>
+        {history.length === 0 ? (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>No workouts logged yet. Complete your first session to see history here.</Text>
+          </View>
+        ) : (
+          history.map(entry => (
+            <View key={entry.id} style={styles.entryCard}>
+              <View style={styles.entryHeader}>
+                <Text style={styles.entryName}>{entry.workoutName}</Text>
+                <Text style={styles.entryDate}>{formatDate(entry.date)}</Text>
+              </View>
+              {entry.difficulty !== null && (
+                <Text style={[styles.difficultyTag, { color: DIFFICULTY_COLORS[entry.difficulty] }]}>
+                  {DIFFICULTY_LABELS[entry.difficulty]}
+                </Text>
+              )}
+              <Text style={styles.entryExercises}>
+                {entry.exerciseNames.join(' · ')}
+              </Text>
+              {entry.note ? (
+                <Text style={styles.entryNote}>"{entry.note}"</Text>
+              ) : null}
+            </View>
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -82,6 +84,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.bg },
   scroll: { flex: 1 },
   container: { padding: Spacing.lg, paddingBottom: Spacing.xxl },
+  backBtn: { marginBottom: Spacing.md },
+  backText: { color: Colors.lime, fontFamily: FontFamily.mono, fontSize: 12, letterSpacing: 1 },
   heading: { fontFamily: FontFamily.display, fontSize: 26, color: Colors.text, marginBottom: Spacing.lg },
   statsRow: { flexDirection: 'row', gap: Spacing.sm, marginBottom: Spacing.lg },
   statCard: {
@@ -94,18 +98,20 @@ const styles = StyleSheet.create({
     fontSize: 9, color: Colors.muted, fontFamily: FontFamily.mono,
     letterSpacing: 1.5, marginBottom: Spacing.sm,
   },
-  chartCard: {
+  emptyCard: {
     backgroundColor: Colors.card, borderRadius: Radius.md,
-    padding: Spacing.md, marginBottom: Spacing.lg,
+    padding: Spacing.lg, alignItems: 'center',
   },
-  chartBars: { flexDirection: 'row', gap: Spacing.xs, alignItems: 'flex-end' },
-  barWrapper: { flex: 1, alignItems: 'center', gap: 4 },
-  bar: { width: '100%', borderRadius: 2 },
-  barLabel: { fontSize: 8, color: Colors.muted, fontFamily: FontFamily.mono },
-  chartGain: {
-    textAlign: 'right', fontSize: 10, color: Colors.lime,
-    fontFamily: FontFamily.mono, marginTop: Spacing.sm,
+  emptyText: { fontSize: 13, color: Colors.muted, textAlign: 'center', lineHeight: 20 },
+  entryCard: {
+    backgroundColor: Colors.card, borderRadius: Radius.md,
+    padding: Spacing.md, marginBottom: Spacing.sm,
+    borderWidth: 1, borderColor: Colors.border,
   },
-  backBtn: { marginBottom: Spacing.md },
-  backText: { color: Colors.lime, fontFamily: FontFamily.mono, fontSize: 12, letterSpacing: 1 },
+  entryHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
+  entryName: { fontSize: 14, color: Colors.text, fontWeight: '600' },
+  entryDate: { fontSize: 10, color: Colors.muted, fontFamily: FontFamily.mono },
+  difficultyTag: { fontSize: 10, fontFamily: FontFamily.mono, marginBottom: 4 },
+  entryExercises: { fontSize: 11, color: Colors.muted, lineHeight: 16 },
+  entryNote: { fontSize: 11, color: Colors.muted, fontStyle: 'italic', marginTop: 4 },
 });
