@@ -11,12 +11,10 @@ node_modules/
 dist/
 
 # iOS
-ios/Pods/
-ios/build/
+ios/
 
 # Android
-android/build/
-android/app/build/
+android/
 
 # Claude
 .claude/
