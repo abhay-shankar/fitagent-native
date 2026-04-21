@@ -7,18 +7,27 @@
     "scheme": "fitagent",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0A0A0A",
+    "icon": "./src/assets/app-icon-1024.png",
     "splash": {
+      "image": "./src/assets/app-icon-1024.png",
+      "resizeMode": "contain",
       "backgroundColor": "#0A0A0A"
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.yourname.fitagent"
+      "bundleIdentifier": "com.yourname.fitagent",
+      "infoPlist": {
+        "NSSpeechRecognitionUsageDescription": "FitAgent uses speech recognition to log your workouts hands-free.",
+        "NSMicrophoneUsageDescription": "FitAgent uses your microphone to listen for voice commands."
+      }
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./src/assets/app-icon-1024.png",
         "backgroundColor": "#0A0A0A"
       },
-      "package": "com.yourname.fitagent"
+      "package": "com.yourname.fitagent",
+      "permissions": ["android.permission.RECORD_AUDIO"]
     },
     "plugins": []
   }

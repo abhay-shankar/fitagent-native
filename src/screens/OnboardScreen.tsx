@@ -87,9 +87,10 @@ export interface OnboardData {
 
 interface Props {
   onComplete: (data: OnboardData) => void;
+  onSkip: () => void;
 }
 
-export default function OnboardScreen({ onComplete }: Props) {
+export default function OnboardScreen({ onComplete, onSkip }: Props) {
   const [step, setStep]         = useState(1);
   const [goals, setGoals]       = useState<number[]>([]);
   const [equipment, setEquip]   = useState<number[]>([]);
@@ -232,6 +233,10 @@ export default function OnboardScreen({ onComplete }: Props) {
             </TouchableOpacity>
           )}
         </ScrollView>
+
+        <TouchableOpacity onPress={onSkip} style={styles.loginFooter}>
+          <Text style={styles.loginFooterText}>Already have an account? <Text style={styles.loginFooterLink}>Sign in</Text></Text>
+        </TouchableOpacity>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -248,6 +253,9 @@ const styles = StyleSheet.create({
     fontSize: 9, color: Colors.lime, fontFamily: FontFamily.mono,
     letterSpacing: 2, marginBottom: Spacing.xs,
   },
+  loginFooter: { alignItems: 'center', paddingVertical: Spacing.lg },
+  loginFooterText: { fontSize: 13, color: Colors.muted },
+  loginFooterLink: { color: Colors.lime, fontFamily: FontFamily.mono },
   heading: {
     fontFamily: FontFamily.display, fontSize: 26, color: Colors.text,
     marginTop: Spacing.lg, marginBottom: Spacing.xs,

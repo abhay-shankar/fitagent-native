@@ -32,48 +32,56 @@ export default function HistoryScreen({ onBack }: { onBack: () => void }) {
         </TouchableOpacity>
         <Text style={styles.heading}>Progress</Text>
 
-        {/* Stats row */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.total}</Text>
-            <Text style={styles.statLabel}>Workouts</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.streak}</Text>
-            <Text style={styles.statLabel}>Day streak</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats.adherence}</Text>
-            <Text style={styles.statLabel}>Adherence</Text>
-          </View>
-        </View>
-
-        {/* Workout history */}
-        <Text style={[styles.sectionLabel, { marginTop: Spacing.lg }]}>WORKOUT HISTORY</Text>
         {history.length === 0 ? (
-          <View style={styles.emptyCard}>
-            <Text style={styles.emptyText}>No workouts logged yet. Complete your first session to see history here.</Text>
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyHeading}>Your journey starts today.</Text>
+            <Text style={styles.emptyBody}>
+              Complete your first workout and your progress will appear here — streaks, adherence, and a full history of every session.
+            </Text>
+            <View style={styles.emptyHint}>
+              <Text style={styles.emptyHintText}>← Head back and hit Start Workout</Text>
+            </View>
           </View>
         ) : (
-          history.map(entry => (
-            <View key={entry.id} style={styles.entryCard}>
-              <View style={styles.entryHeader}>
-                <Text style={styles.entryName}>{entry.workoutName}</Text>
-                <Text style={styles.entryDate}>{formatDate(entry.date)}</Text>
+          <>
+            {/* Stats row */}
+            <View style={styles.statsRow}>
+              <View style={styles.statCard}>
+                <Text style={styles.statValue}>{stats.total}</Text>
+                <Text style={styles.statLabel}>Workouts</Text>
               </View>
-              {entry.difficulty !== null && (
-                <Text style={[styles.difficultyTag, { color: DIFFICULTY_COLORS[entry.difficulty] }]}>
-                  {DIFFICULTY_LABELS[entry.difficulty]}
-                </Text>
-              )}
-              <Text style={styles.entryExercises}>
-                {entry.exerciseNames.join(' · ')}
-              </Text>
-              {entry.note ? (
-                <Text style={styles.entryNote}>"{entry.note}"</Text>
-              ) : null}
+              <View style={styles.statCard}>
+                <Text style={styles.statValue}>{stats.streak}</Text>
+                <Text style={styles.statLabel}>Day streak</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statValue}>{stats.adherence}</Text>
+                <Text style={styles.statLabel}>Adherence</Text>
+              </View>
             </View>
-          ))
+
+            {/* Workout history */}
+            <Text style={[styles.sectionLabel, { marginTop: Spacing.lg }]}>WORKOUT HISTORY</Text>
+            {history.map(entry => (
+              <View key={entry.id} style={styles.entryCard}>
+                <View style={styles.entryHeader}>
+                  <Text style={styles.entryName}>{entry.workoutName}</Text>
+                  <Text style={styles.entryDate}>{formatDate(entry.date)}</Text>
+                </View>
+                {entry.difficulty !== null && (
+                  <Text style={[styles.difficultyTag, { color: DIFFICULTY_COLORS[entry.difficulty] }]}>
+                    {DIFFICULTY_LABELS[entry.difficulty]}
+                  </Text>
+                )}
+                <Text style={styles.entryExercises}>
+                  {entry.exerciseNames.join(' · ')}
+                </Text>
+                {entry.note ? (
+                  <Text style={styles.entryNote}>"{entry.note}"</Text>
+                ) : null}
+              </View>
+            ))}
+          </>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -98,11 +106,20 @@ const styles = StyleSheet.create({
     fontSize: 9, color: Colors.muted, fontFamily: FontFamily.mono,
     letterSpacing: 1.5, marginBottom: Spacing.sm,
   },
-  emptyCard: {
-    backgroundColor: Colors.card, borderRadius: Radius.md,
-    padding: Spacing.lg, alignItems: 'center',
+  emptyState: { flex: 1, paddingTop: Spacing.xxl },
+  emptyHeading: {
+    fontFamily: FontFamily.display, fontSize: 26, color: Colors.text,
+    marginBottom: Spacing.md,
   },
-  emptyText: { fontSize: 13, color: Colors.muted, textAlign: 'center', lineHeight: 20 },
+  emptyBody: {
+    fontSize: 14, color: Colors.muted, lineHeight: 22, marginBottom: Spacing.xl,
+  },
+  emptyHint: {
+    borderTopWidth: 1, borderTopColor: Colors.border, paddingTop: Spacing.lg,
+  },
+  emptyHintText: {
+    fontSize: 12, color: Colors.lime, fontFamily: FontFamily.mono, letterSpacing: 0.5,
+  },
   entryCard: {
     backgroundColor: Colors.card, borderRadius: Radius.md,
     padding: Spacing.md, marginBottom: Spacing.sm,

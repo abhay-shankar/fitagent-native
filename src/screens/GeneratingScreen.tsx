@@ -18,6 +18,7 @@ interface Props {
 
 export default function GeneratingScreen({ profile, onReady }: Props) {
   const [stepIndex, setStepIndex] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   // Cycle through step labels while Claude works
   useEffect(() => {
@@ -29,7 +30,10 @@ export default function GeneratingScreen({ profile, onReady }: Props) {
 
   // Kick off the Claude request
   useEffect(() => {
-    generateWorkoutPlan(profile).then(onReady);
+    generateWorkoutPlan(profile).then(onReady).catch(e => {
+      console.error('[GeneratingScreen]', e);
+      setError(String(e));
+    });
   }, []);
 
   return (
@@ -56,7 +60,10 @@ export default function GeneratingScreen({ profile, onReady }: Props) {
           ))}
         </View>
 
-        <Text style={styles.sub}>Personalised to your goals and equipment</Text>
+        {error
+          ? <Text style={styles.error}>{error}</Text>
+          : <Text style={styles.sub}>Personalised to your goals and equipment</Text>
+        }
       </View>
     </SafeAreaView>
   );
@@ -83,5 +90,9 @@ const styles = StyleSheet.create({
   sub: {
     fontSize: 12, color: Colors.muted, fontFamily: FontFamily.mono,
     textAlign: 'center', letterSpacing: 0.5,
+  },
+  error: {
+    fontSize: 12, color: Colors.red, fontFamily: FontFamily.mono,
+    textAlign: 'center', lineHeight: 18,
   },
 });

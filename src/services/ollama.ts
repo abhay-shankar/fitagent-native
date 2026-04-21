@@ -55,6 +55,8 @@ export async function generateWorkoutPlan(profile: OnboardData): Promise<Workout
   };
   const limit = limits[profile.sessionLength] ?? limits[1];
 
+  const exerciseNote = '';
+
   const text = await chat([
     {
       role: 'system',
@@ -62,7 +64,7 @@ export async function generateWorkoutPlan(profile: OnboardData): Promise<Workout
     },
     {
       role: 'user',
-      content: `Create a weekly workout plan for this user:\n${buildProfileSummary(profile)}\n\n` +
+      content: `Create a weekly workout plan for this user:\n${buildProfileSummary(profile)}\n${exerciseNote}\n` +
         `Return JSON with this exact shape:\n` +
         `{"totalWeeks":<6-12>,"todayFocus":"<e.g. UPPER BODY>","todaySummary":"<e.g. 3 exercises · ~20-30 min>",` +
         `"weekSchedule":[{"day":"Mon","type":"<type>","status":"done"|"today"|"rest"|"upcoming",` +

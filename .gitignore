@@ -18,6 +18,9 @@ ios/build/
 android/build/
 android/app/build/
 
+# Claude
+.claude/
+
 # macOS
 .DS_Store
 
