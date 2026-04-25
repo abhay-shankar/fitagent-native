@@ -6,7 +6,9 @@ import {
 import { Colors, FontFamily, Radius, Spacing } from '../tokens';
 import { PrimaryButton } from '../components/ui';
 import { OnboardData } from './OnboardScreen';
-import { saveProfile } from '../services/storage';
+import { saveProfile, deleteAccount } from '../services/storage';
+import { supabase } from '../services/supabase';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const GOALS     = ['Build muscle', 'Lose weight', 'Improve endurance', 'General fitness'];
 const EQUIPMENT = ['Full gym access', 'Dumbbells / barbell', 'Resistance bands', 'Bodyweight only'];
@@ -85,6 +87,7 @@ export default function SettingsScreen({ profile, onSave, onBack }: Props) {
   const [level,    setLevel]    = useState<number[]>([profile.level]);
   const [injuries, setInjuries] = useState(profile.injuries ?? '');
   const [saving,   setSaving]   = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const toggle = (
     setter: React.Dispatch<React.SetStateAction<number[]>>,
@@ -127,6 +130,33 @@ export default function SettingsScreen({ profile, onSave, onBack }: Props) {
       [
         { text: 'Keep current plan', onPress: () => onSave(updated, false) },
         { text: 'Regenerate', style: 'default', onPress: () => onSave(updated, true) },
+      ],
+    );
+  }
+
+  async function handleSignOut() {
+    await AsyncStorage.clear();
+    await supabase.auth.signOut();
+  }
+
+  function handleDeleteAccount() {
+    Alert.alert(
+      'Delete account',
+      'This will permanently delete your profile, plan, and all workout history. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete', style: 'destructive', onPress: async () => {
+            setDeleting(true);
+            try {
+              await deleteAccount();
+              await supabase.auth.signOut();
+            } catch (e: any) {
+              Alert.alert('Error', e.message ?? 'Could not delete account.');
+              setDeleting(false);
+            }
+          },
+        },
       ],
     );
   }
@@ -198,6 +228,23 @@ export default function SettingsScreen({ profile, onSave, onBack }: Props) {
             <ActivityIndicator style={StyleSheet.absoluteFill} color={Colors.bg} />
           )}
 
+          <View style={styles.dangerZone}>
+            <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
+              <Text style={styles.signOutText}>SIGN OUT</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.deleteBtn}
+              onPress={handleDeleteAccount}
+              disabled={deleting}
+            >
+              {deleting
+                ? <ActivityIndicator color={Colors.red} size="small" />
+                : <Text style={styles.deleteText}>DELETE ACCOUNT</Text>
+              }
+            </TouchableOpacity>
+          </View>
+
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -258,4 +305,15 @@ const styles = StyleSheet.create({
 
   cta:         { marginTop: Spacing.xl },
   ctaDisabled: { opacity: 0.4 },
+  dangerZone: { marginTop: Spacing.xxl, gap: Spacing.sm },
+  signOutBtn: {
+    borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md,
+    paddingVertical: 14, alignItems: 'center',
+  },
+  signOutText: { fontFamily: FontFamily.mono, fontSize: 12, color: Colors.muted, letterSpacing: 1 },
+  deleteBtn: {
+    borderWidth: 1, borderColor: Colors.red + '50', borderRadius: Radius.md,
+    paddingVertical: 14, alignItems: 'center',
+  },
+  deleteText: { fontFamily: FontFamily.mono, fontSize: 12, color: Colors.red, letterSpacing: 1 },
 });

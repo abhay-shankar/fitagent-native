@@ -57,14 +57,14 @@ export default function DashboardScreen({ profile, plan, onStartWorkout, onViewH
         <View style={styles.header}>
           <View>
             <Text style={styles.weekLabel}>WEEK 1 OF {plan.totalWeeks}</Text>
-            <Text style={styles.heading}>Your Plan</Text>
+            <TouchableOpacity style={styles.headingRow} onPress={onSettings} activeOpacity={0.7}>
+              <Text style={styles.heading}>Your Plan</Text>
+              <Text style={styles.wrenchIcon}>🔧</Text>
+            </TouchableOpacity>
           </View>
           <View style={styles.headerRight}>
             <Badge color={Colors.lime}>On Track</Badge>
             <Text style={styles.workoutCount}>{completedDays}/{trainingDays} workouts</Text>
-            <TouchableOpacity onPress={onSettings} style={styles.gearBtn}>
-              <Text style={styles.gearIcon}>⚙</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -155,7 +155,7 @@ export default function DashboardScreen({ profile, plan, onStartWorkout, onViewH
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: Colors.bg },
   scroll: { flex: 1 },
-  container: { padding: Spacing.lg, paddingBottom: Spacing.xxl },
+  container: { padding: Spacing.lg, paddingTop: 0, paddingBottom: Spacing.xxl },
   header: {
     flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'flex-start', marginBottom: Spacing.lg,
@@ -167,10 +167,10 @@ const styles = StyleSheet.create({
   heading: {
     fontFamily: FontFamily.display, fontSize: 24, color: Colors.text,
   },
-  headerRight: { alignItems: 'flex-end', gap: 4 },
+  headerRight: { alignItems: 'flex-end' },
+  headingRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
   workoutCount: { fontSize: 10, color: Colors.muted, fontFamily: FontFamily.mono, marginTop: 4 },
-  gearBtn:  { marginTop: 6, alignSelf: 'flex-end' },
-  gearIcon: { fontSize: 18, color: Colors.muted },
+  wrenchIcon: { fontSize: 14 },
   restCard: {
     backgroundColor: Colors.surface, borderRadius: Radius.lg,
     padding: Spacing.lg, marginBottom: Spacing.lg,

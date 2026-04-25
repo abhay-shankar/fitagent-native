@@ -120,6 +120,31 @@ export async function cacheDashboardNote(note: string): Promise<void> {
   ]);
 }
 
+// ─── Account deletion ─────────────────────────────────────────────────────────
+
+export async function deleteAccount(): Promise<void> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) throw new Error('Not authenticated');
+
+  const res = await fetch(
+    `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/delete-account`,
+    {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+      },
+    }
+  );
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.error ?? 'Failed to delete account');
+  }
+
+  // Clear all local cache
+  await AsyncStorage.multiRemove([DASHBOARD_NOTE_KEY, DASHBOARD_NOTE_DATE_KEY]);
+}
+
 // ─── Stats ───────────────────────────────────────────────────────────────────
 
 export function calcStats(history: WorkoutEntry[]): {
