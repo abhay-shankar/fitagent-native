@@ -12,6 +12,7 @@ const GOALS     = ['Build muscle', 'Lose weight', 'Improve endurance', 'General 
 const EQUIPMENT = ['Full gym access', 'Dumbbells / barbell', 'Resistance bands', 'Bodyweight only'];
 const DURATIONS = ['20–30 min', '30–45 min', '45–60 min', '60 min+'];
 const LEVELS    = ['Beginner (< 1 yr)', 'Intermediate (1–3 yrs)', 'Advanced (3+ yrs)'];
+const WEEKDAYS  = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 const TOTAL_STEPS = 6;
 
@@ -80,6 +81,7 @@ export interface OnboardData {
   goals: number[];
   equipment: number[];
   daysPerWeek: number;
+  preferredDays: number[];
   sessionLength: number;
   level: number;
   injuries: string;
@@ -91,13 +93,22 @@ interface Props {
 }
 
 export default function OnboardScreen({ onComplete, onSkip }: Props) {
-  const [step, setStep]         = useState(1);
-  const [goals, setGoals]       = useState<number[]>([]);
-  const [equipment, setEquip]   = useState<number[]>([]);
-  const [days, setDays]         = useState(3);
-  const [duration, setDuration] = useState<number[]>([]);
-  const [level, setLevel]       = useState<number[]>([]);
-  const [injuries, setInjuries] = useState('');
+  const [step, setStep]               = useState(1);
+  const [goals, setGoals]             = useState<number[]>([]);
+  const [equipment, setEquip]         = useState<number[]>([]);
+  const [days, setDays]               = useState(3);
+  const [preferredDays, setPreferred] = useState<number[]>([]);
+  const [duration, setDuration]       = useState<number[]>([]);
+  const [level, setLevel]             = useState<number[]>([]);
+  const [injuries, setInjuries]       = useState('');
+
+  const togglePreferredDay = (i: number) => {
+    setPreferred(prev => {
+      const next = prev.includes(i) ? prev.filter(d => d !== i) : [...prev, i];
+      setDays(Math.max(next.length, 1));
+      return next;
+    });
+  };
 
   const toggle = (
     setter: React.Dispatch<React.SetStateAction<number[]>>,
@@ -114,6 +125,7 @@ export default function OnboardScreen({ onComplete, onSkip }: Props) {
   const canAdvance = () => {
     if (step === 1) return goals.length > 0;
     if (step === 2) return equipment.length > 0;
+    if (step === 3) return preferredDays.length > 0;
     if (step === 4) return duration.length > 0;
     if (step === 5) return level.length > 0;
     return true;
@@ -127,6 +139,7 @@ export default function OnboardScreen({ onComplete, onSkip }: Props) {
         goals,
         equipment,
         daysPerWeek: days,
+        preferredDays,
         sessionLength: duration[0],
         level: level[0],
         injuries,
@@ -180,8 +193,23 @@ export default function OnboardScreen({ onComplete, onSkip }: Props) {
 
           {step === 3 && (
             <View style={styles.stepperWrapper}>
-              <Stepper value={days} min={2} max={6} onChange={setDays} />
+              <Stepper value={days} min={1} max={7} onChange={setDays} />
               <Text style={styles.stepperHint}>days / week</Text>
+              <Text style={styles.dayPickerLabel}>Which days?</Text>
+              <View style={styles.dayPickerRow}>
+                {WEEKDAYS.map((d, i) => {
+                  const active = preferredDays.includes(i);
+                  return (
+                    <TouchableOpacity
+                      key={d}
+                      onPress={() => togglePreferredDay(i)}
+                      style={[styles.dayChip, active && styles.dayChipActive]}
+                    >
+                      <Text style={[styles.dayChipText, active && styles.dayChipTextActive]}>{d}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
             </View>
           )}
 
@@ -291,6 +319,19 @@ const styles = StyleSheet.create({
   stepperHint: {
     marginTop: Spacing.sm, fontSize: 12, color: Colors.muted, fontFamily: FontFamily.mono,
   },
+  dayPickerLabel: {
+    marginTop: Spacing.xl, marginBottom: Spacing.sm,
+    fontSize: 11, color: Colors.muted, fontFamily: FontFamily.mono, letterSpacing: 1,
+  },
+  dayPickerRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center' },
+  dayChip: {
+    paddingHorizontal: 10, paddingVertical: 8, borderRadius: Radius.md,
+    borderWidth: 1.5, borderColor: Colors.dim, backgroundColor: 'transparent',
+    minWidth: 44, alignItems: 'center',
+  },
+  dayChipActive:     { borderColor: Colors.lime, backgroundColor: Colors.lime + '18' },
+  dayChipText:       { fontSize: 12, color: Colors.muted, fontFamily: FontFamily.mono },
+  dayChipTextActive: { color: Colors.lime },
 
   textInput: {
     backgroundColor: Colors.card, borderWidth: 1.5, borderColor: Colors.dim,

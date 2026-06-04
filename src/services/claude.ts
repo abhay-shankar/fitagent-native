@@ -42,11 +42,37 @@ export interface AgentReview {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DAY_NAMES      = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const PLAN_DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-function mapScheduleToCalendar(plan: WorkoutPlan): WorkoutPlan {
-  const todayIndex = new Date().getDay(); // 0=Sun, 1=Mon, …
+function mapScheduleToCalendar(plan: WorkoutPlan, preferredDays?: number[]): WorkoutPlan {
+  if (preferredDays && preferredDays.length > 0) {
+    // Plan has a fixed Mon–Sun structure. Mark today if it's a training day.
+    const jsDayIndex  = new Date().getDay();            // 0=Sun … 6=Sat
+    const planDayIdx  = (jsDayIndex + 6) % 7;           // 0=Mon … 6=Sun
+    const preferredSet = new Set(preferredDays);
 
+    const schedule = plan.weekSchedule.map((d, i) => ({
+      ...d,
+      day: PLAN_DAY_NAMES[i],
+      status: preferredSet.has(i)
+        ? (i === planDayIdx ? 'today' as const : 'upcoming' as const)
+        : 'rest' as const,
+    }));
+
+    const today = schedule.find(d => d.status === 'today');
+    return {
+      ...plan,
+      weekSchedule: schedule,
+      todayFocus:   today?.type?.toUpperCase() ?? plan.todayFocus,
+      todaySummary: today?.exercises
+        ? `${today.exercises.length} exercises · ~${plan.todaySummary.split('~')[1] ?? ''}`
+        : plan.todaySummary,
+    };
+  }
+
+  // No preferred days — remap schedule starting from today.
+  const todayIndex = new Date().getDay();
   const schedule: DayPlan[] = plan.weekSchedule.map((d, i) => ({
     ...d,
     day: DAY_NAMES[(todayIndex + i) % 7],
@@ -77,7 +103,7 @@ async function claudeGenerateWorkoutPlan(profile: OnboardData): Promise<WorkoutP
     action: 'generateWorkoutPlan',
     payload: { profile, recentWorkouts },
   });
-  return mapScheduleToCalendar(plan);
+  return mapScheduleToCalendar(plan, profile.preferredDays);
 }
 
 async function claudeGenerateDashboardNote(profile: OnboardData, plan: WorkoutPlan): Promise<string> {

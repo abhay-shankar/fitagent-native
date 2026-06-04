@@ -4,6 +4,7 @@ const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
 const RAPIDAPI_KEY = Deno.env.get('RAPIDAPI_KEY') ?? '';
 
 // ─── Labels (mirrors client OnboardScreen constants) ────────────────────────
+const PLAN_DAY_NAMES  = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 const GOAL_LABELS     = ['Build muscle', 'Lose weight', 'Improve endurance', 'General fitness'];
 const EQUIP_LABELS    = ['Full gym access', 'Dumbbells / barbell', 'Resistance bands', 'Bodyweight only'];
 const LEVEL_LABELS    = ['Beginner', 'Intermediate', 'Advanced'];
@@ -36,14 +37,19 @@ function buildProfileSummary(profile: OnboardData): string {
   const duration = DURATION_LABELS[profile.sessionLength] ?? 'unknown';
   const injuries = profile.injuries?.trim() || 'none';
 
+  const preferredDayNames = profile.preferredDays && profile.preferredDays.length > 0
+    ? profile.preferredDays.map(i => PLAN_DAY_NAMES[i]).join(', ')
+    : null;
+
   return [
     `Goals: ${goals}`,
     `Equipment: ${equip}`,
     `Experience: ${level}`,
     `Session length: ${duration}`,
     `Days/week: ${profile.daysPerWeek}`,
+    preferredDayNames ? `Training days: ${preferredDayNames}` : null,
     `Injuries/limitations: ${injuries}`,
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 }
 
 async function callClaude(body: object): Promise<{ content: { type: string; text: string }[] }> {
@@ -95,6 +101,7 @@ interface OnboardData {
   goals: number[];
   equipment: number[];
   daysPerWeek: number;
+  preferredDays?: number[];
   sessionLength: number;
   level: number;
   injuries?: string;
@@ -168,6 +175,18 @@ async function handleGenerateWorkoutPlan(profile: OnboardData, recentWorkouts?: 
     : '';
   const historyNote = buildRecentWorkoutsSummary(recentWorkouts ?? []);
 
+  const hasPreferredDays = profile.preferredDays && profile.preferredDays.length > 0;
+  const trainingDayNames = hasPreferredDays
+    ? profile.preferredDays!.map(i => PLAN_DAY_NAMES[i])
+    : null;
+
+  const dayRules = hasPreferredDays
+    ? `- EXACTLY these days must be training days: ${trainingDayNames!.join(', ')} — all other days must be rest days
+- All training days must have status "upcoming" — the app determines which is "today" based on the real calendar`
+    : `- EXACTLY ${profile.daysPerWeek} days must be training days — no more, no less. The remaining ${7 - profile.daysPerWeek} days must be rest days.
+- The FIRST entry (index 0) MUST be a training day — never a rest day.
+- Exactly one training day must have status "today", the rest "upcoming"`;
+
   const response = await callClaude({
     model: 'claude-opus-4-6',
     max_tokens: 4096,
@@ -196,10 +215,8 @@ Return a JSON object with exactly this shape:
 }
 
 CRITICAL RULES — follow exactly:
-- Exactly 7 entries in weekSchedule (Mon–Sun)
-- EXACTLY ${profile.daysPerWeek} days must be training days — no more, no less. The remaining ${7 - profile.daysPerWeek} days must be rest days.
-- The FIRST entry (index 0) MUST be a training day — never a rest day.
-- Exactly one training day must have status "today", the rest "upcoming"
+- Exactly 7 entries in weekSchedule (Mon–Sun), in order
+${dayRules}
 - Rest days: status "rest", type "Rest", no workoutName or exercises field
 - Training days: vary workouts across the week — no repeated sessions
 - Avoid exercises that strain: ${profile.injuries || 'none'}
@@ -237,15 +254,25 @@ CRITICAL RULES — follow exactly:
       }
     }
 
-    // Enforce daysPerWeek
-    const trainingDays = plan.weekSchedule.filter(d => d.status !== 'rest');
-    if (trainingDays.length > profile.daysPerWeek) {
-      let excess = trainingDays.length - profile.daysPerWeek;
-      for (let i = plan.weekSchedule.length - 1; i >= 0 && excess > 0; i--) {
-        const day = plan.weekSchedule[i];
-        if (day.status === 'upcoming') {
-          plan.weekSchedule[i] = { day: day.day, type: 'Rest', status: 'rest' };
-          excess--;
+    // Enforce training days
+    if (hasPreferredDays) {
+      const preferredSet = new Set(profile.preferredDays);
+      plan.weekSchedule = plan.weekSchedule.map((d, i) => {
+        if (preferredSet.has(i)) {
+          return { ...d, day: PLAN_DAY_NAMES[i], status: 'upcoming' as const };
+        }
+        return { day: PLAN_DAY_NAMES[i], type: 'Rest', status: 'rest' as const };
+      });
+    } else {
+      const trainingDays = plan.weekSchedule.filter(d => d.status !== 'rest');
+      if (trainingDays.length > profile.daysPerWeek) {
+        let excess = trainingDays.length - profile.daysPerWeek;
+        for (let i = plan.weekSchedule.length - 1; i >= 0 && excess > 0; i--) {
+          const day = plan.weekSchedule[i];
+          if (day.status === 'upcoming') {
+            plan.weekSchedule[i] = { day: day.day, type: 'Rest', status: 'rest' };
+            excess--;
+          }
         }
       }
     }

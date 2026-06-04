@@ -14,6 +14,7 @@ const GOALS     = ['Build muscle', 'Lose weight', 'Improve endurance', 'General 
 const EQUIPMENT = ['Full gym access', 'Dumbbells / barbell', 'Resistance bands', 'Bodyweight only'];
 const DURATIONS = ['20–30 min', '30–45 min', '45–60 min', '60 min+'];
 const LEVELS    = ['Beginner (< 1 yr)', 'Intermediate (1–3 yrs)', 'Advanced (3+ yrs)'];
+const WEEKDAYS  = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -80,14 +81,23 @@ interface Props {
 }
 
 export default function SettingsScreen({ profile, onSave, onBack }: Props) {
-  const [goals,    setGoals]    = useState<number[]>(profile.goals);
-  const [equip,    setEquip]    = useState<number[]>(profile.equipment);
-  const [days,     setDays]     = useState(profile.daysPerWeek);
-  const [duration, setDuration] = useState<number[]>([profile.sessionLength]);
-  const [level,    setLevel]    = useState<number[]>([profile.level]);
-  const [injuries, setInjuries] = useState(profile.injuries ?? '');
-  const [saving,   setSaving]   = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [goals,         setGoals]    = useState<number[]>(profile.goals);
+  const [equip,         setEquip]    = useState<number[]>(profile.equipment);
+  const [days,          setDays]     = useState(profile.daysPerWeek);
+  const [preferredDays, setPreferred] = useState<number[]>(profile.preferredDays ?? []);
+  const [duration,      setDuration] = useState<number[]>([profile.sessionLength]);
+  const [level,         setLevel]    = useState<number[]>([profile.level]);
+  const [injuries,      setInjuries] = useState(profile.injuries ?? '');
+  const [saving,        setSaving]   = useState(false);
+  const [deleting,      setDeleting] = useState(false);
+
+  const togglePreferredDay = (i: number) => {
+    setPreferred(prev => {
+      const next = prev.includes(i) ? prev.filter(d => d !== i) : [...prev, i];
+      setDays(Math.max(next.length, 1));
+      return next;
+    });
+  };
 
   const toggle = (
     setter: React.Dispatch<React.SetStateAction<number[]>>,
@@ -101,17 +111,18 @@ export default function SettingsScreen({ profile, onSave, onBack }: Props) {
   };
 
   const hasChanges =
-    JSON.stringify(goals)    !== JSON.stringify(profile.goals)      ||
-    JSON.stringify(equip)    !== JSON.stringify(profile.equipment)  ||
-    days                     !== profile.daysPerWeek                ||
-    duration[0]              !== profile.sessionLength              ||
-    level[0]                 !== profile.level                      ||
-    injuries.trim()          !== (profile.injuries ?? '').trim();
+    JSON.stringify(goals)         !== JSON.stringify(profile.goals)             ||
+    JSON.stringify(equip)         !== JSON.stringify(profile.equipment)         ||
+    days                          !== profile.daysPerWeek                       ||
+    JSON.stringify(preferredDays) !== JSON.stringify(profile.preferredDays ?? []) ||
+    duration[0]                   !== profile.sessionLength                     ||
+    level[0]                      !== profile.level                             ||
+    injuries.trim()               !== (profile.injuries ?? '').trim();
 
   async function handleSave() {
     const updated: OnboardData = {
       goals, equipment: equip, daysPerWeek: days,
-      sessionLength: duration[0], level: level[0], injuries,
+      preferredDays, sessionLength: duration[0], level: level[0], injuries,
     };
 
     setSaving(true);
@@ -190,8 +201,23 @@ export default function SettingsScreen({ profile, onSave, onBack }: Props) {
 
           <SectionLabel>DAYS PER WEEK</SectionLabel>
           <View style={styles.stepperWrapper}>
-            <Stepper value={days} min={2} max={6} onChange={setDays} />
+            <Stepper value={days} min={1} max={7} onChange={setDays} />
             <Text style={styles.stepperHint}>days / week</Text>
+            <Text style={styles.dayPickerLabel}>WHICH DAYS?</Text>
+            <View style={styles.dayPickerRow}>
+              {WEEKDAYS.map((d, i) => {
+                const active = preferredDays.includes(i);
+                return (
+                  <TouchableOpacity
+                    key={d}
+                    onPress={() => togglePreferredDay(i)}
+                    style={[styles.dayChip, active && styles.dayChipActive]}
+                  >
+                    <Text style={[styles.dayChipText, active && styles.dayChipTextActive]}>{d}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
 
           <SectionLabel>SESSION LENGTH</SectionLabel>
@@ -296,6 +322,19 @@ const styles = StyleSheet.create({
     minWidth: 56, textAlign: 'center',
   },
   stepperHint: { marginTop: Spacing.xs, fontSize: 11, color: Colors.muted, fontFamily: FontFamily.mono },
+  dayPickerLabel: {
+    marginTop: Spacing.lg, marginBottom: Spacing.sm,
+    fontSize: 9, color: Colors.muted, fontFamily: FontFamily.mono, letterSpacing: 1.5,
+  },
+  dayPickerRow:      { flexDirection: 'row', gap: 8, flexWrap: 'wrap', justifyContent: 'center' },
+  dayChip: {
+    paddingHorizontal: 10, paddingVertical: 8, borderRadius: Radius.md,
+    borderWidth: 1.5, borderColor: Colors.dim,
+    minWidth: 44, alignItems: 'center',
+  },
+  dayChipActive:     { borderColor: Colors.lime, backgroundColor: Colors.lime + '18' },
+  dayChipText:       { fontSize: 12, color: Colors.muted, fontFamily: FontFamily.mono },
+  dayChipTextActive: { color: Colors.lime },
 
   textInput: {
     backgroundColor: Colors.card, borderWidth: 1.5, borderColor: Colors.dim,
