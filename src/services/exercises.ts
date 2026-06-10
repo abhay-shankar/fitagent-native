@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
-import { edgeFunctionUrl } from './supabase';
+import { edgeFunctionUrl, authedEdgeFunctionHeaders } from './supabase';
 
 const IMG_CACHE_PREFIX = '@fitagent/exercise_img/';
 
@@ -17,8 +17,9 @@ export async function fetchExerciseImage(exerciseName: string): Promise<string |
   const localPath = `${FileSystem.cacheDirectory}exercise_${encodeURIComponent(exerciseName.toLowerCase())}.gif`;
 
   try {
+    const authHeaders = await authedEdgeFunctionHeaders();
     const result = await FileSystem.downloadAsync(url, localPath, {
-      headers: {},
+      headers: authHeaders,
     });
     if (result.status !== 200) {
       console.warn('[exercises] image download failed:', result.status);
